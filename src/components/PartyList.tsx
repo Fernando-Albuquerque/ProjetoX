@@ -44,7 +44,11 @@ const PartyList = ({ party }: PartyListProps) => {
                 />
             </div>
 
-            <div style={{ display: 'grid', gap: '10px' }}>
+            <div style={{
+                display: 'grid',
+                gap: '10px',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))'
+            }}>
                 {sortedParty.map((p, i) => (
                     <div key={i} style={{
                         background: 'rgba(255,255,255,0.05)',

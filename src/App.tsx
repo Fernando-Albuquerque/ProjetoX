@@ -1,19 +1,19 @@
 import { useState, useEffect } from 'react';
-import { User, Users, MapPin, Compass, Clock } from 'lucide-react';
+import { User, Users, MapPin } from 'lucide-react';
 import './styles/index.css';
 import { api } from './services/api';
 import type { PlayerData, Pokemon } from './services/api';
 import PlayerStats from './components/PlayerStats';
 import PartyList from './components/PartyList';
 import NearbyList from './components/NearbyList';
-import TrackerArrow from './components/TrackerArrow';
-import Timer from './components/Timer';
 
 function App() {
-  const [activeTab, setActiveTab] = useState<'player' | 'party' | 'nearby' | 'tracker' | 'timer'>('player');
-  const [trackedPokemon, setTrackedPokemon] = useState<Pokemon | null>(null);
-
+  const [activeTab, setActiveTab] = useState<'player' | 'party' | 'nearby'>('player');
   const [error, setError] = useState<string | null>(null);
+
+  // Layout State
+  const [panelWidth, setPanelWidth] = useState(450);
+  const [isResizing, setIsResizing] = useState(false);
 
   // Data State
   const [player, setPlayer] = useState<PlayerData | null>(null);
@@ -24,7 +24,7 @@ function App() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        console.log('[APP] Buscando dados do servidor...');
+        // console.log('[APP] Buscando dados do servidor...');
         const pData = await api.getPlayer();
         setPlayer(pData);
 
@@ -34,7 +34,6 @@ function App() {
         const nearbyData = await api.getNearby();
         setNearby(nearbyData);
         setError(null);
-        console.log('[APP] Dados recebidos com sucesso!');
       } catch (e) {
         console.error("[APP] Erro ao buscar dados:", e);
         setError(e instanceof Error ? e.message : "Falha ao conectar com o servidor");
@@ -46,13 +45,47 @@ function App() {
     return () => clearInterval(interval);
   }, []);
 
-  const handleTrack = (pokemon: Pokemon) => {
-    setTrackedPokemon(pokemon);
-    setActiveTab('tracker');
+  // Resize Logic
+  const startResizing = (e: React.MouseEvent) => {
+    setIsResizing(true);
+    e.preventDefault();
   };
 
+  const stopResizing = () => {
+    setIsResizing(false);
+  };
+
+  const resize = (e: MouseEvent) => {
+    if (isResizing) {
+      const newWidth = e.clientX;
+      if (newWidth > 300 && newWidth < window.innerWidth) {
+        setPanelWidth(newWidth);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (isResizing) {
+      window.addEventListener('mousemove', resize);
+      window.addEventListener('mouseup', stopResizing);
+    } else {
+      window.removeEventListener('mousemove', resize);
+      window.removeEventListener('mouseup', stopResizing);
+    }
+    return () => {
+      window.removeEventListener('mousemove', resize);
+      window.removeEventListener('mouseup', stopResizing);
+    };
+  }, [isResizing]);
+
   return (
-    <div className="app-container">
+    <div className="app-container" style={{ width: `${panelWidth}px` }}>
+      {/* Resize Handle */}
+      <div
+        className="resize-handle"
+        onMouseDown={startResizing}
+      />
+
       <header style={{ marginBottom: '20px', textAlign: 'center' }}>
         <h1 style={{ fontSize: '1.5rem', color: 'var(--primary)' }}>COBBLEMON <span style={{ color: 'white' }}>TRACKER</span></h1>
       </header>
@@ -96,23 +129,7 @@ function App() {
         )}
 
         {activeTab === 'nearby' && (
-          <NearbyList nearby={nearby} onTrack={handleTrack} />
-        )}
-
-        {activeTab === 'tracker' && (
-          <div className="glass-panel" style={{ padding: '20px', height: '100%', boxSizing: 'border-box' }}>
-            {trackedPokemon && player ? (
-              <TrackerArrow player={player} target={trackedPokemon} />
-            ) : (
-              <div style={{ textAlign: 'center', marginTop: '50px', color: 'var(--text-dim)' }}>
-                <p>Select a Pokémon from "Nearby" to track.</p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {activeTab === 'timer' && (
-          <Timer />
+          <NearbyList nearby={nearby} player={player} />
         )}
       </main>
 
@@ -128,14 +145,6 @@ function App() {
         <button className={`nav-item ${activeTab === 'nearby' ? 'active' : ''}`} onClick={() => setActiveTab('nearby')}>
           <MapPin />
           <span>Nearby</span>
-        </button>
-        <button className={`nav-item ${activeTab === 'tracker' ? 'active' : ''}`} onClick={() => setActiveTab('tracker')}>
-          <Compass />
-          <span>Tracker</span>
-        </button>
-        <button className={`nav-item ${activeTab === 'timer' ? 'active' : ''}`} onClick={() => setActiveTab('timer')}>
-          <Clock />
-          <span>Timer</span>
         </button>
       </nav>
     </div>
