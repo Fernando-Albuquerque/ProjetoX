@@ -6,7 +6,6 @@ import type { PlayerData, Pokemon } from './services/api';
 import PlayerStats from './components/PlayerStats';
 import PartyList from './components/PartyList';
 import NearbyList from './components/NearbyList';
-import WindowControls from './components/WindowControls';
 
 function App() {
   const [activeTab, setActiveTab] = useState<'player' | 'party' | 'nearby'>('player');
@@ -21,6 +20,20 @@ function App() {
   const [opacity, setOpacity] = useState(1.0);
   const [isAdjustingOpacity, setIsAdjustingOpacity] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
+  const [savedDimensions, setSavedDimensions] = useState({ width: window.outerWidth, height: window.outerHeight });
+
+  const toggleMinimize = () => {
+    if (!isMinimized) {
+      // Minimizing: Save current size and shrink
+      setSavedDimensions({ width: window.outerWidth, height: window.outerHeight });
+      window.resizeTo(450, 80); // Shrink to header size
+      setIsMinimized(true);
+    } else {
+      // Maximizing: Restore saved size
+      window.resizeTo(savedDimensions.width, savedDimensions.height);
+      setIsMinimized(false);
+    }
+  };
 
   // Resize Logic (Pointer Events)
   const handleResizeDown = (e: React.PointerEvent) => {
@@ -144,14 +157,15 @@ function App() {
 
   return (
     <>
-      <WindowControls />
       <div className="app-container" style={{
-        width: '100%',
-        height: isMinimized ? 'auto' : '100vh', // Auto height when minimized
+        width: isMinimized ? 'fit-content' : '100%', // Shrink to fit content when minimized
+        height: isMinimized ? 'auto' : '100vh',
         position: 'relative',
-        backgroundColor: `rgba(10, 10, 15, ${isMinimized ? 0 : opacity})`, // Transparent bg when minimized
+        backgroundColor: `rgba(10, 10, 15, ${isMinimized ? 0 : opacity})`,
         transition: isAdjustingOpacity ? 'none' : 'background-color 0.2s',
-        overflow: 'hidden' // Hide overflow
+        overflow: 'hidden',
+        pointerEvents: 'none',
+        margin: isMinimized ? '0 auto' : '0' // Center when minimized
       }}>
 
         {/* Reconnecting Indicator */}
@@ -167,7 +181,7 @@ function App() {
             fontSize: '0.75rem',
             fontWeight: 'bold',
             zIndex: 100,
-            pointerEvents: 'none',
+            pointerEvents: 'auto', // Enable clicks on indicator
             animation: 'pulse 2s infinite',
             boxShadow: '0 2px 8px rgba(255, 165, 0, 0.4)'
           }}>
@@ -191,7 +205,8 @@ function App() {
               height: '15px',
               cursor: 'ew-resize',
               zIndex: 9999,
-              background: 'transparent' // Invisible
+              background: 'transparent', // Invisible
+              pointerEvents: 'auto' // Enable clicks on slider
             }}
           />
         )}
@@ -213,7 +228,8 @@ function App() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              padding: '5px'
+              padding: '5px',
+              pointerEvents: 'auto' // Enable clicks on resize handle
             }}
             className="resize-handle-icon"
           >
@@ -224,25 +240,37 @@ function App() {
         <header style={{
           marginBottom: isMinimized ? '0' : '20px',
           textAlign: 'center',
-          position: 'relative',
-          padding: '10px',
-          background: isMinimized ? 'rgba(10, 10, 15, 0.8)' : 'transparent', // Add background when minimized
+          // position: 'relative', // No longer needed for absolute children
+          padding: '10px 20px',
+          background: isMinimized ? 'rgba(10, 10, 15, 0.8)' : 'transparent',
           borderRadius: isMinimized ? '0 0 10px 10px' : '0',
-          transition: 'all 0.3s ease'
+          transition: 'all 0.3s ease',
+          pointerEvents: 'auto',
+          width: isMinimized ? 'fit-content' : '100%', // Full width when normal, fit when minimized
+          margin: '0 auto',
+          // @ts-ignore
+          WebkitAppRegion: 'drag',
+          userSelect: 'none',
+          display: 'flex', // Use Flexbox
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '10px' // Space between title and buttons
         }}>
           <h1 style={{ fontSize: '1.5rem', color: 'var(--primary)', margin: 0 }}>COBBLEMON <span style={{ color: 'white' }}>TRACKER</span></h1>
 
           <div style={{
-            position: 'absolute',
-            top: '50%',
-            right: '10px',
-            transform: 'translateY(-50%)',
+            // position: 'absolute', // Removed absolute positioning
+            // top: '50%',
+            // right: '-70px',
+            // transform: 'translateY(-50%)',
             display: 'flex',
-            gap: '5px'
+            gap: '5px',
+            // @ts-ignore
+            WebkitAppRegion: 'no-drag'
           }}>
             {/* Minimize/Maximize Button */}
             <button
-              onClick={() => setIsMinimized(!isMinimized)}
+              onClick={toggleMinimize}
               style={{
                 background: 'rgba(255, 255, 255, 0.1)',
                 border: '1px solid rgba(255, 255, 255, 0.2)',
@@ -300,7 +328,7 @@ function App() {
 
         {!isMinimized && (
           <>
-            <main style={{ flex: 1, overflowY: 'auto', paddingBottom: '20px' }}>
+            <main style={{ flex: 1, overflowY: 'auto', paddingBottom: '20px', pointerEvents: 'auto' }}>
               {activeTab === 'player' && (
                 player ? <PlayerStats player={player} /> : (
                   <div className="glass-panel" style={{ padding: '20px', textAlign: 'center' }}>
@@ -343,7 +371,7 @@ function App() {
               )}
             </main>
 
-            <nav className="nav-bar glass-panel">
+            <nav className="nav-bar glass-panel" style={{ pointerEvents: 'auto' }}>
               <button className={`nav-item ${activeTab === 'player' ? 'active' : ''}`} onClick={() => setActiveTab('player')}>
                 <User />
                 <span>Player</span>
