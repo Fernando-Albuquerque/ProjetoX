@@ -165,14 +165,50 @@ async function fetchWithTimeout(url: string, timeout = 5000) {
 export const api = {
   getPlayer: async (): Promise<PlayerData> => {
     if (USE_MOCK_DATA) return Promise.resolve(mockPlayer);
-    return fetchWithTimeout(`${API_BASE}/player`);
+    const data = await fetchWithTimeout(`${API_BASE}/player`);
+
+    // Check if API returned an error object
+    if (data && typeof data === 'object' && 'error' in data) {
+      console.error('[API] Player error:', data.error);
+      throw new Error(data.error);
+    }
+
+    return data;
   },
   getParty: async (): Promise<Pokemon[]> => {
     if (USE_MOCK_DATA) return Promise.resolve(mockParty);
-    return fetchWithTimeout(`${API_BASE}/party`);
+    const data = await fetchWithTimeout(`${API_BASE}/party`);
+
+    // Check if API returned an error object
+    if (data && typeof data === 'object' && 'error' in data) {
+      console.error('[API] Party error:', data.error);
+      throw new Error(data.error);
+    }
+
+    // Ensure it's an array
+    if (!Array.isArray(data)) {
+      console.error('[API] Party is not an array:', data);
+      throw new Error('Invalid party data format');
+    }
+
+    return data;
   },
   getNearby: async (): Promise<Pokemon[]> => {
     if (USE_MOCK_DATA) return Promise.resolve(mockNearby);
-    return fetchWithTimeout(`${API_BASE}/nearby`);
+    const data = await fetchWithTimeout(`${API_BASE}/nearby`);
+
+    // Check if API returned an error object
+    if (data && typeof data === 'object' && 'error' in data) {
+      console.error('[API] Nearby error:', data.error);
+      throw new Error(data.error);
+    }
+
+    // Ensure it's an array
+    if (!Array.isArray(data)) {
+      console.error('[API] Nearby is not an array:', data);
+      throw new Error('Invalid nearby data format');
+    }
+
+    return data;
   }
 };
