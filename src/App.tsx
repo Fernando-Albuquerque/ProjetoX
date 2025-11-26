@@ -1,12 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
-import { User, Users, MapPin, ArrowDownRight } from 'lucide-react';
+import { User, Users, MapPin, ArrowDownRight, Minimize2, Maximize2, RefreshCw } from 'lucide-react';
 import './styles/index.css';
 import { api } from './services/api';
 import type { PlayerData, Pokemon } from './services/api';
 import PlayerStats from './components/PlayerStats';
 import PartyList from './components/PartyList';
 import NearbyList from './components/NearbyList';
-import WindowControls from './components/WindowControls';
 
 function App() {
   const [activeTab, setActiveTab] = useState<'player' | 'party' | 'nearby'>('player');
@@ -20,6 +19,21 @@ function App() {
   // Window State
   const [opacity, setOpacity] = useState(1.0);
   const [isAdjustingOpacity, setIsAdjustingOpacity] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
+  const [savedDimensions, setSavedDimensions] = useState({ width: window.outerWidth, height: window.outerHeight });
+
+  const toggleMinimize = () => {
+    if (!isMinimized) {
+      // Minimizing: Save current size and shrink
+      setSavedDimensions({ width: window.outerWidth, height: window.outerHeight });
+      window.resizeTo(450, 80); // Shrink to header size
+      setIsMinimized(true);
+    } else {
+      // Maximizing: Restore saved size
+      window.resizeTo(savedDimensions.width, savedDimensions.height);
+      setIsMinimized(false);
+    }
+  };
 
   // Resize Logic (Pointer Events)
   const handleResizeDown = (e: React.PointerEvent) => {
@@ -143,17 +157,19 @@ function App() {
 
   return (
     <>
-      <WindowControls />
       <div className="app-container" style={{
-        width: '100%',
-        height: '100vh',
+        width: isMinimized ? 'fit-content' : '100%', // Shrink to fit content when minimized
+        height: isMinimized ? 'auto' : '100vh',
         position: 'relative',
-        backgroundColor: `rgba(10, 10, 15, ${opacity})`, // Opacity affects background only
-        transition: isAdjustingOpacity ? 'none' : 'background-color 0.2s'
+        backgroundColor: `rgba(10, 10, 15, ${isMinimized ? 0 : opacity})`,
+        transition: isAdjustingOpacity ? 'none' : 'background-color 0.2s',
+        overflow: 'hidden',
+        pointerEvents: 'none',
+        margin: isMinimized ? '0 auto' : '0' // Center when minimized
       }}>
 
         {/* Reconnecting Indicator */}
-        {isReconnecting && player && (
+        {isReconnecting && player && !isMinimized && (
           <div style={{
             position: 'absolute',
             top: '40px',
@@ -165,7 +181,7 @@ function App() {
             fontSize: '0.75rem',
             fontWeight: 'bold',
             zIndex: 100,
-            pointerEvents: 'none',
+            pointerEvents: 'auto', // Enable clicks on indicator
             animation: 'pulse 2s infinite',
             boxShadow: '0 2px 8px rgba(255, 165, 0, 0.4)'
           }}>
@@ -173,139 +189,204 @@ function App() {
           </div>
         )}
 
-        {/* Invisible Opacity Slider */}
-        <div
-          className="opacity-slider"
-          onPointerDown={handleOpacityDown}
-          onPointerMove={handleOpacityMove}
-          onPointerUp={handleOpacityUp}
-          title="Drag left/right to change opacity"
-          style={{
-            position: 'fixed',
-            bottom: 0,
-            left: 0,
-            width: 'calc(100% - 40px)', // Leave space for resize handle
-            height: '15px',
-            cursor: 'ew-resize',
-            zIndex: 9999,
-            background: 'transparent' // Invisible
-          }}
-        />
-
-        {/* Resize Handle */}
-        <div
-          onPointerDown={handleResizeDown}
-          onPointerMove={handleResizeMove}
-          onPointerUp={handleResizeUp}
-          style={{
-            position: 'fixed',
-            bottom: '5px',
-            right: '5px',
-            cursor: 'se-resize',
-            zIndex: 10000,
-            color: 'rgba(255, 255, 255, 0.5)',
-            transition: 'color 0.2s',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '5px'
-          }}
-          className="resize-handle-icon"
-        >
-          <ArrowDownRight size={24} />
-        </div>
-        <header style={{ marginBottom: '20px', textAlign: 'center', position: 'relative' }}>
-          <h1 style={{ fontSize: '1.5rem', color: 'var(--primary)' }}>COBBLEMON <span style={{ color: 'white' }}>TRACKER</span></h1>
-          {/* Manual Refresh Button */}
-          <button
-            onClick={() => window.location.reload()}
+        {/* Invisible Opacity Slider - Only when not minimized */}
+        {!isMinimized && (
+          <div
+            className="opacity-slider"
+            onPointerDown={handleOpacityDown}
+            onPointerMove={handleOpacityMove}
+            onPointerUp={handleOpacityUp}
+            title="Drag left/right to change opacity"
             style={{
-              position: 'absolute',
-              top: '0',
-              right: '10px',
-              background: 'rgba(255, 255, 255, 0.1)',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              borderRadius: '6px',
-              padding: '6px 10px',
-              cursor: 'pointer',
-              color: 'white',
-              fontSize: '0.75rem',
+              position: 'fixed',
+              bottom: 0,
+              left: 0,
+              width: 'calc(100% - 40px)', // Leave space for resize handle
+              height: '15px',
+              cursor: 'ew-resize',
+              zIndex: 9999,
+              background: 'transparent', // Invisible
+              pointerEvents: 'auto' // Enable clicks on slider
+            }}
+          />
+        )}
+
+        {/* Resize Handle - Only when not minimized */}
+        {!isMinimized && (
+          <div
+            onPointerDown={handleResizeDown}
+            onPointerMove={handleResizeMove}
+            onPointerUp={handleResizeUp}
+            style={{
+              position: 'fixed',
+              bottom: '5px',
+              right: '5px',
+              cursor: 'se-resize',
+              zIndex: 10000,
+              color: 'rgba(255, 255, 255, 0.5)',
+              transition: 'color 0.2s',
               display: 'flex',
               alignItems: 'center',
-              gap: '5px',
-              transition: 'all 0.2s'
+              justifyContent: 'center',
+              padding: '5px',
+              pointerEvents: 'auto' // Enable clicks on resize handle
             }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
-              e.currentTarget.style.transform = 'scale(1.05)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-              e.currentTarget.style.transform = 'scale(1)';
-            }}
-            title="Recarregar overlay (F5)"
+            className="resize-handle-icon"
           >
-            🔄 Refresh
-          </button>
+            <ArrowDownRight size={24} />
+          </div>
+        )}
+
+        <header style={{
+          marginBottom: isMinimized ? '0' : '20px',
+          textAlign: 'center',
+          // position: 'relative', // No longer needed for absolute children
+          padding: '10px 20px',
+          background: isMinimized ? 'rgba(10, 10, 15, 0.8)' : 'transparent',
+          borderRadius: isMinimized ? '0 0 10px 10px' : '0',
+          transition: 'all 0.3s ease',
+          pointerEvents: 'auto',
+          width: isMinimized ? 'fit-content' : '100%', // Full width when normal, fit when minimized
+          margin: '0 auto',
+          // @ts-ignore
+          WebkitAppRegion: 'drag',
+          userSelect: 'none',
+          display: 'flex', // Use Flexbox
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '10px' // Space between title and buttons
+        }}>
+          <h1 style={{ fontSize: '1.5rem', color: 'var(--primary)', margin: 0 }}>COBBLEMON <span style={{ color: 'white' }}>TRACKER</span></h1>
+
+          <div style={{
+            // position: 'absolute', // Removed absolute positioning
+            // top: '50%',
+            // right: '-70px',
+            // transform: 'translateY(-50%)',
+            display: 'flex',
+            gap: '5px',
+            // @ts-ignore
+            WebkitAppRegion: 'no-drag'
+          }}>
+            {/* Minimize/Maximize Button */}
+            <button
+              onClick={toggleMinimize}
+              style={{
+                background: 'rgba(255, 255, 255, 0.1)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                borderRadius: '6px',
+                padding: '6px',
+                cursor: 'pointer',
+                color: 'white',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
+                e.currentTarget.style.transform = 'scale(1.05)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                e.currentTarget.style.transform = 'scale(1)';
+              }}
+              title={isMinimized ? "Maximizar" : "Minimizar"}
+            >
+              {isMinimized ? <Maximize2 size={16} /> : <Minimize2 size={16} />}
+            </button>
+
+            {/* Manual Refresh Button */}
+            <button
+              onClick={() => window.location.reload()}
+              style={{
+                background: 'rgba(255, 255, 255, 0.1)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                borderRadius: '6px',
+                padding: '6px',
+                cursor: 'pointer',
+                color: 'white',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
+                e.currentTarget.style.transform = 'scale(1.05)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                e.currentTarget.style.transform = 'scale(1)';
+              }}
+              title="Recarregar overlay (F5)"
+            >
+              <RefreshCw size={16} />
+            </button>
+          </div>
         </header>
 
-        <main style={{ flex: 1, overflowY: 'auto', paddingBottom: '20px' }}>
-          {activeTab === 'player' && (
-            player ? <PlayerStats player={player} /> : (
-              <div className="glass-panel" style={{ padding: '20px', textAlign: 'center' }}>
-                {error ? (
-                  <>
-                    <p style={{ color: '#ff5555', marginBottom: '10px', fontSize: '1.2rem' }}>⚠️ Erro de Conexão</p>
-                    <p style={{ fontSize: '0.9rem', color: 'white', marginBottom: '15px' }}>{error}</p>
+        {!isMinimized && (
+          <>
+            <main style={{ flex: 1, overflowY: 'auto', paddingBottom: '20px', pointerEvents: 'auto' }}>
+              {activeTab === 'player' && (
+                player ? <PlayerStats player={player} /> : (
+                  <div className="glass-panel" style={{ padding: '20px', textAlign: 'center' }}>
+                    {error ? (
+                      <>
+                        <p style={{ color: '#ff5555', marginBottom: '10px', fontSize: '1.2rem' }}>⚠️ Erro de Conexão</p>
+                        <p style={{ fontSize: '0.9rem', color: 'white', marginBottom: '15px' }}>{error}</p>
 
-                    <div style={{ textAlign: 'left', backgroundColor: 'rgba(0,0,0,0.3)', padding: '15px', borderRadius: '8px', marginBottom: '15px' }}>
-                      <p style={{ fontWeight: 'bold', marginBottom: '8px', color: 'var(--primary)' }}>🔍 Diagnóstico:</p>
-                      <ol style={{ fontSize: '0.8rem', color: 'var(--text-dim)', lineHeight: '1.6', paddingLeft: '20px' }}>
-                        <li>Abra o Console do Navegador (pressione <code>F12</code>)</li>
-                        <li>Veja se há mensagens de erro vermelhas</li>
-                        <li>Teste se o mod está respondendo: <a href="http://localhost:4567/player" target="_blank" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>Clique aqui</a></li>
-                        <li>Se nada aparecer, verifique se o Minecraft está rodando com o mod</li>
-                        <li>Se ainda não funcionar, reinicie o <code>npm run dev</code></li>
-                      </ol>
-                    </div>
+                        <div style={{ textAlign: 'left', backgroundColor: 'rgba(0,0,0,0.3)', padding: '15px', borderRadius: '8px', marginBottom: '15px' }}>
+                          <p style={{ fontWeight: 'bold', marginBottom: '8px', color: 'var(--primary)' }}>🔍 Diagnóstico:</p>
+                          <ol style={{ fontSize: '0.8rem', color: 'var(--text-dim)', lineHeight: '1.6', paddingLeft: '20px' }}>
+                            <li>Abra o Console do Navegador (pressione <code>F12</code>)</li>
+                            <li>Veja se há mensagens de erro vermelhas</li>
+                            <li>Teste se o mod está respondendo: <a href="http://localhost:4567/player" target="_blank" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>Clique aqui</a></li>
+                            <li>Se nada aparecer, verifique se o Minecraft está rodando com o mod</li>
+                            <li>Se ainda não funcionar, reinicie o <code>npm run dev</code></li>
+                          </ol>
+                        </div>
 
-                    <button
-                      onClick={() => window.location.reload()}
-                      style={{ padding: '10px 20px', backgroundColor: 'var(--primary)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
-                    >
-                      🔄 Tentar Novamente
-                    </button>
-                  </>
-                ) : (
-                  <p className="animate-pulse-glow">⏳ Conectando ao servidor...</p>
-                )}
-              </div>
-            )
-          )}
+                        <button
+                          onClick={() => window.location.reload()}
+                          style={{ padding: '10px 20px', backgroundColor: 'var(--primary)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
+                        >
+                          🔄 Tentar Novamente
+                        </button>
+                      </>
+                    ) : (
+                      <p className="animate-pulse-glow">⏳ Conectando ao servidor...</p>
+                    )}
+                  </div>
+                )
+              )}
 
-          {activeTab === 'party' && (
-            <PartyList party={party} />
-          )}
+              {activeTab === 'party' && (
+                <PartyList party={party} />
+              )}
 
-          {activeTab === 'nearby' && (
-            <NearbyList nearby={nearby} player={player} />
-          )}
-        </main>
+              {activeTab === 'nearby' && (
+                <NearbyList nearby={nearby} player={player} />
+              )}
+            </main>
 
-        <nav className="nav-bar glass-panel">
-          <button className={`nav-item ${activeTab === 'player' ? 'active' : ''}`} onClick={() => setActiveTab('player')}>
-            <User />
-            <span>Player</span>
-          </button>
-          <button className={`nav-item ${activeTab === 'party' ? 'active' : ''}`} onClick={() => setActiveTab('party')}>
-            <Users />
-            <span>Party</span>
-          </button>
-          <button className={`nav-item ${activeTab === 'nearby' ? 'active' : ''}`} onClick={() => setActiveTab('nearby')}>
-            <MapPin />
-            <span>Nearby</span>
-          </button>
-        </nav>
+            <nav className="nav-bar glass-panel" style={{ pointerEvents: 'auto' }}>
+              <button className={`nav-item ${activeTab === 'player' ? 'active' : ''}`} onClick={() => setActiveTab('player')}>
+                <User />
+                <span>Player</span>
+              </button>
+              <button className={`nav-item ${activeTab === 'party' ? 'active' : ''}`} onClick={() => setActiveTab('party')}>
+                <Users />
+                <span>Party</span>
+              </button>
+              <button className={`nav-item ${activeTab === 'nearby' ? 'active' : ''}`} onClick={() => setActiveTab('nearby')}>
+                <MapPin />
+                <span>Nearby</span>
+              </button>
+            </nav>
+          </>
+        )}
       </div>
     </>
   );
