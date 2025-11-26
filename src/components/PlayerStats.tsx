@@ -1,4 +1,4 @@
-import type { PlayerData } from '../services/api';
+import type { PlayerData } from '../types';
 import { Heart, Compass, Map } from 'lucide-react';
 
 interface PlayerStatsProps {

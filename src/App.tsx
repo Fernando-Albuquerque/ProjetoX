@@ -1,20 +1,37 @@
 import { useState, useEffect, useRef } from 'react';
-import { User, Users, MapPin, ArrowDownRight, Minimize2, Maximize2, RefreshCw } from 'lucide-react';
+import { User, Users, MapPin, ArrowDownRight, Minimize2, Maximize2, RefreshCw, Sword, Database, Bot } from 'lucide-react';
 import './styles/index.css';
 import { api } from './services/api';
-import type { PlayerData, Pokemon } from './services/api';
+import type { PlayerData, Pokemon, BattleData } from './types';
 import PlayerStats from './components/PlayerStats';
 import PartyList from './components/PartyList';
 import NearbyList from './components/NearbyList';
+import BattleView from './components/BattleView';
+import PCList from './components/PCList';
+import AIChat from './components/AIChat';
 
 function App() {
-  const [activeTab, setActiveTab] = useState<'player' | 'party' | 'nearby'>('player');
+  const [activeTab, setActiveTab] = useState<'player' | 'party' | 'nearby' | 'battle' | 'pc' | 'ai'>('player');
   const [error, setError] = useState<string | null>(null);
 
   // Data State
   const [player, setPlayer] = useState<PlayerData | null>(null);
   const [party, setParty] = useState<Pokemon[]>([]);
   const [nearby, setNearby] = useState<Pokemon[]>([]);
+  const [battle, setBattle] = useState<BattleData | null>(null);
+  const [pc, setPc] = useState<Pokemon[]>([]);
+
+  // Settings State
+  const [geminiKey, setGeminiKey] = useState<string>(() => {
+    return localStorage.getItem('gemini_api_key') || import.meta.env.VITE_GEMINI_API_KEY || '';
+  });
+
+  // Save API Key
+  useEffect(() => {
+    if (geminiKey) {
+      localStorage.setItem('gemini_api_key', geminiKey);
+    }
+  }, [geminiKey]);
 
   // Window State
   const [opacity, setOpacity] = useState(1.0);
@@ -84,13 +101,13 @@ function App() {
 
       const watchdogInterval = setInterval(() => {
         const timeSinceLastUpdate = Date.now() - (window as any).__lastUpdateTime;
-        console.log(`[WATCHDOG] Tempo desde última atualização: ${timeSinceLastUpdate}ms`);
+        // console.log(`[WATCHDOG] Tempo desde última atualização: ${timeSinceLastUpdate}ms`);
 
-        if (timeSinceLastUpdate > 5000) {
+        if (timeSinceLastUpdate > 10000) { // Increased to 10s to avoid false positives during heavy loads
           console.log("[WATCHDOG] ⚠️ TRAVOU! Recarregando...");
           window.location.reload();
         }
-      }, 1000); // Check every 1 second
+      }, 2000);
 
       // Store interval ID globally so it never gets cleared
       (window as any).__watchdogInterval = watchdogInterval;
@@ -103,17 +120,18 @@ function App() {
   useEffect(() => {
     let isMounted = true;
     let timeoutId: ReturnType<typeof setTimeout>;
+    let pcFetchCounter = 0;
 
     const fetchData = async () => {
       try {
-        console.log("[FETCH] Buscando dados...");
+        // console.log("[FETCH] Buscando dados...");
         const pData = await api.getPlayer();
         if (isMounted) {
           setPlayer(pData);
           // Update GLOBAL timestamp on success
           (window as any).__lastUpdateTime = Date.now();
           lastUpdateTime.current = Date.now();
-          console.log("[FETCH] ✓ Dados recebidos, timestamp atualizado");
+          // console.log("[FETCH] ✓ Dados recebidos, timestamp atualizado");
 
           // Fetch other data only if player fetch succeeds
           const partyData = await api.getParty();
@@ -122,11 +140,22 @@ function App() {
           const nearbyData = await api.getNearby();
           setNearby(nearbyData);
 
+          const battleData = await api.getBattle();
+          setBattle(battleData);
+
+          // Fetch PC data less frequently (every 10 cycles ~ 10 seconds)
+          pcFetchCounter++;
+          if (pcFetchCounter >= 10) {
+            const pcData = await api.getPC();
+            setPc(pcData);
+            pcFetchCounter = 0;
+          }
+
           setError(null);
           setIsReconnecting(false);
 
-          // Success: fetch again quickly (100ms)
-          timeoutId = setTimeout(fetchData, 100);
+          // Success: fetch again quickly (1000ms - reduced from 100ms to avoid spamming)
+          timeoutId = setTimeout(fetchData, 1000);
         }
       } catch (e) {
         if (isMounted) {
@@ -369,20 +398,42 @@ function App() {
               {activeTab === 'nearby' && (
                 <NearbyList nearby={nearby} player={player} />
               )}
+
+              {activeTab === 'battle' && (
+                <BattleView battle={battle} />
+              )}
+
+              {activeTab === 'pc' && (
+                <PCList pc={pc} />
+              )}
+
+              {activeTab === 'ai' && (
+                <AIChat
+                  context={{ player, party, battle, nearby, pc }}
+                  apiKey={geminiKey}
+                  setApiKey={setGeminiKey}
+                />
+              )}
             </main>
 
             <nav className="nav-bar glass-panel" style={{ pointerEvents: 'auto' }}>
-              <button className={`nav-item ${activeTab === 'player' ? 'active' : ''}`} onClick={() => setActiveTab('player')}>
-                <User />
-                <span>Player</span>
+              <button className={`nav-item ${activeTab === 'player' ? 'active' : ''}`} onClick={() => setActiveTab('player')} title="Player">
+                <User size={20} />
               </button>
-              <button className={`nav-item ${activeTab === 'party' ? 'active' : ''}`} onClick={() => setActiveTab('party')}>
-                <Users />
-                <span>Party</span>
+              <button className={`nav-item ${activeTab === 'party' ? 'active' : ''}`} onClick={() => setActiveTab('party')} title="Party">
+                <Users size={20} />
               </button>
-              <button className={`nav-item ${activeTab === 'nearby' ? 'active' : ''}`} onClick={() => setActiveTab('nearby')}>
-                <MapPin />
-                <span>Nearby</span>
+              <button className={`nav-item ${activeTab === 'nearby' ? 'active' : ''}`} onClick={() => setActiveTab('nearby')} title="Nearby">
+                <MapPin size={20} />
+              </button>
+              <button className={`nav-item ${activeTab === 'battle' ? 'active' : ''}`} onClick={() => setActiveTab('battle')} title="Battle">
+                <Sword size={20} />
+              </button>
+              <button className={`nav-item ${activeTab === 'pc' ? 'active' : ''}`} onClick={() => setActiveTab('pc')} title="PC">
+                <Database size={20} />
+              </button>
+              <button className={`nav-item ${activeTab === 'ai' ? 'active' : ''}`} onClick={() => setActiveTab('ai')} title="AI Assistant">
+                <Bot size={20} />
               </button>
             </nav>
           </>

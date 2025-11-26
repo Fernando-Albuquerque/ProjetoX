@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { Pokemon, PlayerData } from '../services/api';
+import type { Pokemon, PlayerData } from '../types';
 import { isLegendaryPokemon } from '../services/api';
 import { Sparkles, Search, Crown, Star, Navigation } from 'lucide-react';
 

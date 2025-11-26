@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Pokemon } from '../services/api';
+import type { Pokemon } from '../types';
 import { Sparkles, Search } from 'lucide-react';
 
 interface PartyListProps {
