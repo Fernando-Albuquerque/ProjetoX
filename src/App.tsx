@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { User, Users, MapPin, ArrowDownRight, Minimize2, Maximize2, RefreshCw, Sword, Database, Bot } from 'lucide-react';
+import { User, Users, MapPin, ArrowDownRight, Minus, Square, RefreshCw, Sword, Database, Bot, X } from 'lucide-react';
 import './styles/index.css';
 import { api } from './services/api';
 import type { PlayerData, Pokemon, BattleData } from './types';
@@ -39,6 +39,7 @@ function App() {
   const [isMinimized, setIsMinimized] = useState(false);
   const [savedDimensions, setSavedDimensions] = useState({ width: window.outerWidth, height: window.outerHeight });
 
+  // Window Controls
   const toggleMinimize = () => {
     if (!isMinimized) {
       // Minimizing: Save current size and shrink
@@ -59,7 +60,22 @@ function App() {
 
   const handleResizeMove = (e: React.PointerEvent) => {
     if (e.currentTarget.hasPointerCapture(e.pointerId)) {
-      window.resizeBy(e.movementX, e.movementY);
+      const minWidth = 500;
+      const minHeight = 200;
+
+      let newWidth = window.outerWidth + e.movementX;
+      let newHeight = window.outerHeight + e.movementY;
+
+      // Se tentar diminuir abaixo do mínimo, bloqueia o movimento naquela direção
+      let dx = e.movementX;
+      let dy = e.movementY;
+
+      if (newWidth < minWidth && e.movementX < 0) dx = 0;
+      if (newHeight < minHeight && e.movementY < 0) dy = 0;
+
+      if (dx !== 0 || dy !== 0) {
+        window.resizeBy(dx, dy);
+      }
     }
   };
 
@@ -200,18 +216,6 @@ function App() {
         {/* Reconnecting Indicator */}
         {isReconnecting && player && !isMinimized && (
           <div style={{
-            position: 'absolute',
-            top: '40px',
-            right: '20px',
-            background: 'rgba(255, 165, 0, 0.9)',
-            color: 'white',
-            padding: '8px 12px',
-            borderRadius: '6px',
-            fontSize: '0.75rem',
-            fontWeight: 'bold',
-            zIndex: 100,
-            pointerEvents: 'auto', // Enable clicks on indicator
-            animation: 'pulse 2s infinite',
             boxShadow: '0 2px 8px rgba(255, 165, 0, 0.4)'
           }}>
             ⚠️ Conexão perdida - Tentando reconectar...
@@ -267,37 +271,61 @@ function App() {
         )}
 
         <header style={{
-          marginBottom: isMinimized ? '0' : '20px',
-          textAlign: 'center',
-          // position: 'relative', // No longer needed for absolute children
-          padding: '10px 20px',
+          marginBottom: isMinimized ? '0' : '15px',
+          padding: '8px 15px',
           background: isMinimized ? 'rgba(10, 10, 15, 0.8)' : 'transparent',
           borderRadius: isMinimized ? '0 0 10px 10px' : '0',
           transition: 'all 0.3s ease',
           pointerEvents: 'auto',
-          width: isMinimized ? 'fit-content' : '100%', // Full width when normal, fit when minimized
+          width: isMinimized ? 'fit-content' : '100%',
+          minWidth: '100px',
           margin: '0 auto',
           // @ts-ignore
           WebkitAppRegion: 'drag',
           userSelect: 'none',
-          display: 'flex', // Use Flexbox
+          display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center',
-          gap: '10px' // Space between title and buttons
+          justifyContent: 'flex-start',
+          gap: '15px'
         }}>
-          <h1 style={{ fontSize: '1.5rem', color: 'var(--primary)', margin: 0 }}>COBBLEMON <span style={{ color: 'white' }}>TRACKER</span></h1>
+          {/* Tab Bar - Left Side */}
+          {!isMinimized && (
+            <nav className="tab-bar" style={{
+              // @ts-ignore
+              WebkitAppRegion: 'no-drag',
+              margin: 0,
+              padding: 0,
+              borderTop: 'none'
+            }}>
+              <button className={`tab-item ${activeTab === 'player' ? 'active' : ''}`} onClick={() => setActiveTab('player')} title="Player">
+                <User size={18} />
+              </button>
+              <button className={`tab-item ${activeTab === 'party' ? 'active' : ''}`} onClick={() => setActiveTab('party')} title="Party">
+                <Users size={18} />
+              </button>
+              <button className={`tab-item ${activeTab === 'nearby' ? 'active' : ''}`} onClick={() => setActiveTab('nearby')} title="Nearby">
+                <MapPin size={18} />
+              </button>
+              <button className={`tab-item ${activeTab === 'battle' ? 'active' : ''}`} onClick={() => setActiveTab('battle')} title="Battle">
+                <Sword size={18} />
+              </button>
+              <button className={`tab-item ${activeTab === 'pc' ? 'active' : ''}`} onClick={() => setActiveTab('pc')} title="PC">
+                <Database size={18} />
+              </button>
+              <button className={`tab-item ${activeTab === 'ai' ? 'active' : ''}`} onClick={() => setActiveTab('ai')} title="AI Assistant">
+                <Bot size={18} />
+              </button>
+            </nav>
+          )}
 
+          {/* Control Buttons - Right Side */}
           <div style={{
-            // position: 'absolute', // Removed absolute positioning
-            // top: '50%',
-            // right: '-70px',
-            // transform: 'translateY(-50%)',
             display: 'flex',
             gap: '5px',
             // @ts-ignore
             WebkitAppRegion: 'no-drag'
           }}>
-            {/* Minimize/Maximize Button */}
+            {/* Minimize Button */}
             <button
               onClick={toggleMinimize}
               style={{
@@ -322,10 +350,10 @@ function App() {
               }}
               title={isMinimized ? "Maximizar" : "Minimizar"}
             >
-              {isMinimized ? <Maximize2 size={16} /> : <Minimize2 size={16} />}
+              {isMinimized ? <Square size={16} /> : <Minus size={16} />}
             </button>
 
-            {/* Manual Refresh Button */}
+            {/* Refresh Button */}
             <button
               onClick={() => window.location.reload()}
               style={{
@@ -351,6 +379,34 @@ function App() {
               title="Recarregar overlay (F5)"
             >
               <RefreshCw size={16} />
+            </button>
+
+            {/* Close Button */}
+            <button
+              onClick={() => window.close()}
+              style={{
+                background: 'rgba(255, 0, 0, 0.2)',
+                border: '1px solid rgba(255, 0, 0, 0.3)',
+                borderRadius: '6px',
+                padding: '6px',
+                cursor: 'pointer',
+                color: 'white',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 0, 0, 0.4)';
+                e.currentTarget.style.transform = 'scale(1.05)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 0, 0, 0.2)';
+                e.currentTarget.style.transform = 'scale(1)';
+              }}
+              title="Fechar overlay"
+            >
+              <X size={16} />
             </button>
           </div>
         </header>
@@ -415,27 +471,6 @@ function App() {
                 />
               )}
             </main>
-
-            <nav className="nav-bar glass-panel" style={{ pointerEvents: 'auto' }}>
-              <button className={`nav-item ${activeTab === 'player' ? 'active' : ''}`} onClick={() => setActiveTab('player')} title="Player">
-                <User size={20} />
-              </button>
-              <button className={`nav-item ${activeTab === 'party' ? 'active' : ''}`} onClick={() => setActiveTab('party')} title="Party">
-                <Users size={20} />
-              </button>
-              <button className={`nav-item ${activeTab === 'nearby' ? 'active' : ''}`} onClick={() => setActiveTab('nearby')} title="Nearby">
-                <MapPin size={20} />
-              </button>
-              <button className={`nav-item ${activeTab === 'battle' ? 'active' : ''}`} onClick={() => setActiveTab('battle')} title="Battle">
-                <Sword size={20} />
-              </button>
-              <button className={`nav-item ${activeTab === 'pc' ? 'active' : ''}`} onClick={() => setActiveTab('pc')} title="PC">
-                <Database size={20} />
-              </button>
-              <button className={`nav-item ${activeTab === 'ai' ? 'active' : ''}`} onClick={() => setActiveTab('ai')} title="AI Assistant">
-                <Bot size={20} />
-              </button>
-            </nav>
           </>
         )}
       </div>

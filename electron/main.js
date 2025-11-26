@@ -15,7 +15,7 @@ function createWindow() {
         alwaysOnTop: true,
         hasShadow: false,
         resizable: true,
-        minWidth: 200,
+        minWidth: 600,
         minHeight: 200,
         webPreferences: {
             nodeIntegration: true,
@@ -37,6 +37,22 @@ function createWindow() {
     screen.on('display-metrics-changed', () => {
         win.setAlwaysOnTop(true, 'screen-saver');
         win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+    });
+
+    // Force minimum size constraints manually as well
+    win.on('will-resize', (event, { width, height }) => {
+        // Electron's will-resize event provides bounds, but we need to check them
+        // Note: newBounds might be passed as the second argument
+    });
+
+    // Correct implementation for will-resize in Electron
+    win.on('will-resize', (event, newBounds) => {
+        if (newBounds.width < 600) {
+            event.preventDefault();
+        }
+        if (newBounds.height < 200) {
+            event.preventDefault();
+        }
     });
 
     // In development, load the Vite dev server

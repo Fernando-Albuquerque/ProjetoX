@@ -86,7 +86,7 @@ export default function AIChat({ context, apiKey, setApiKey }: AIChatProps) {
     }
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', maxHeight: '500px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
             {/* Header */}
             <div style={{
                 padding: '10px',
