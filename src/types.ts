@@ -19,6 +19,7 @@ export interface Move {
 
 export interface Pokemon {
     species: string;
+    types?: string[];
     level: number;
     hp: number;
     max_hp: number;
